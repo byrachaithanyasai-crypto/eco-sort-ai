@@ -438,6 +438,9 @@ function ScanPage({
   };
 
   const recommendation = getRecommendation();
+  const isLowConfidence =
+    classificationResult?.status === "low_confidence" ||
+    (confidence !== null && confidence < 60);
 
   return (
     <>
@@ -662,6 +665,26 @@ function ScanPage({
                       </div>
                     )}
 
+                    {/* Confidence Warning */}
+                    {isLowConfidence && (
+                      <div className="mt-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-800">
+                        <AlertTriangle
+                          size={22}
+                          className="mt-0.5 shrink-0 text-amber-600"
+                        />
+                        <div>
+                          <p className="font-black">
+                            Low Confidence — Please Verify
+                          </p>
+                          <p className="mt-1 text-sm leading-6 text-amber-700">
+                            The AI is not sufficiently confident in this
+                            classification. Please verify the item manually
+                            before disposal.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Recommendation */}
                     <div
                       className={`mt-6 rounded-2xl border p-5 ${recommendation.className}`}
@@ -684,12 +707,24 @@ function ScanPage({
                     </div>
 
                     {/* Result Status */}
-                    <div className="mt-5 flex items-center gap-2 text-sm font-medium text-slate-500">
-                      <CheckCircle2
-                        size={17}
-                        className="text-emerald-500"
-                      />
-                      AI response received successfully
+                    <div
+                      className={`mt-5 flex items-center gap-2 text-sm font-medium ${
+                        isLowConfidence
+                          ? "text-amber-700"
+                          : "text-slate-500"
+                      }`}
+                    >
+                      {isLowConfidence ? (
+                        <AlertTriangle size={17} className="text-amber-500" />
+                      ) : (
+                        <CheckCircle2
+                          size={17}
+                          className="text-emerald-500"
+                        />
+                      )}
+                      {isLowConfidence
+                        ? "Manual verification recommended"
+                        : "AI response received successfully"}
                     </div>
 
                     {/* Actions */}
