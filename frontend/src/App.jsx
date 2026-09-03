@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { classifyWaste } from "./api";
 import {
   Leaf,
   Recycle,
@@ -7,10 +8,12 @@ import {
   Upload,
   X,
   CheckCircle2,
+  LoaderCircle,
 } from "lucide-react";
 
 function App() {
   const [selectedImage, setSelectedImage] = useState(null);
+  const [isClassifying, setIsClassifying] = useState(false);
 
   const handleImageChange = (event) => {
     const file = event.target.files?.[0];
@@ -34,6 +37,32 @@ function App() {
     }
 
     setSelectedImage(null);
+  };
+
+  const handleClassify = async () => {
+    if (!selectedImage?.file) return;
+
+    try {
+      setIsClassifying(true);
+
+      console.log("Sending image for classification...");
+
+      const result = await classifyWaste(selectedImage.file);
+
+      console.log("Classification result:", result);
+    } catch (error) {
+      console.error("Classification failed:", error);
+
+      if (error.response) {
+        console.error("Server response:", error.response.data);
+      } else if (error.request) {
+        console.error("No response received from backend.");
+      } else {
+        console.error("Request error:", error.message);
+      }
+    } finally {
+      setIsClassifying(false);
+    }
   };
 
   return (
@@ -149,7 +178,8 @@ function App() {
 
                   <button
                     onClick={removeImage}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                    disabled={isClassifying}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label="Remove image"
                   >
                     <X size={20} />
@@ -170,9 +200,25 @@ function App() {
                 </div>
 
                 <div className="mt-5 flex justify-center">
-                  <button className="flex items-center gap-2 rounded-xl bg-slate-900 px-7 py-3 font-semibold text-white shadow-lg transition hover:bg-slate-800">
-                    <Recycle size={19} />
-                    Classify Waste
+                  <button
+                    onClick={handleClassify}
+                    disabled={isClassifying}
+                    className="flex items-center gap-2 rounded-xl bg-slate-900 px-7 py-3 font-semibold text-white shadow-lg transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {isClassifying ? (
+                      <>
+                        <LoaderCircle
+                          size={19}
+                          className="animate-spin"
+                        />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Recycle size={19} />
+                        Classify Waste
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
