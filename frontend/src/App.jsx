@@ -14,6 +14,7 @@ import {
 function App() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [isClassifying, setIsClassifying] = useState(false);
+  const [classificationResult, setClassificationResult] = useState(null);
 
   const handleImageChange = (event) => {
     const file = event.target.files?.[0];
@@ -28,6 +29,8 @@ function App() {
       name: file.name,
     });
 
+    setClassificationResult(null);
+
     console.log("Selected image:", file);
   };
 
@@ -37,6 +40,7 @@ function App() {
     }
 
     setSelectedImage(null);
+    setClassificationResult(null);
   };
 
   const handleClassify = async () => {
@@ -44,12 +48,15 @@ function App() {
 
     try {
       setIsClassifying(true);
+      setClassificationResult(null);
 
       console.log("Sending image for classification...");
 
       const result = await classifyWaste(selectedImage.file);
 
       console.log("Classification result:", result);
+
+      setClassificationResult(result);
     } catch (error) {
       console.error("Classification failed:", error);
 
@@ -127,7 +134,6 @@ function App() {
           <div className="rounded-3xl border-2 border-dashed border-emerald-200 bg-white p-8 shadow-xl shadow-emerald-100/50 sm:p-12">
             {!selectedImage ? (
               <>
-                {/* Upload Icon */}
                 <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-50 text-emerald-600">
                   <Upload size={34} />
                 </div>
@@ -142,7 +148,6 @@ function App() {
                   </p>
                 </div>
 
-                {/* Buttons */}
                 <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                   <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700">
                     <Upload size={19} />
@@ -163,7 +168,6 @@ function App() {
                 </div>
               </>
             ) : (
-              /* Image Preview */
               <div>
                 <div className="mb-6 flex items-center justify-between">
                   <div>
@@ -221,6 +225,33 @@ function App() {
                     )}
                   </button>
                 </div>
+
+                {/* Classification Result */}
+                {classificationResult && (
+                  <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm">
+                        <CheckCircle2 size={24} />
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-medium text-emerald-700">
+                          AI Classification Complete
+                        </p>
+
+                        <h3 className="text-2xl font-bold text-slate-900">
+                          {classificationResult.label ||
+                            classificationResult.category ||
+                            "Result received"}
+                        </h3>
+                      </div>
+                    </div>
+
+                    <p className="mt-4 text-sm text-slate-600">
+                      Backend response received successfully.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
