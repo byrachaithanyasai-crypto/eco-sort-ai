@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { classifyWaste } from "./api";
+import API, { classifyWaste } from "./api";
 import {
   Leaf,
   Recycle,
@@ -32,15 +32,37 @@ function App() {
   const [history, setHistory] = useState([]);
 
   useEffect(() => {
-    try {
-      const savedHistory = localStorage.getItem(HISTORY_KEY);
+    const loadHistory = async () => {
+      try {
+        const response = await API.get("/history?limit=50");
+        const backendHistory = (response.data?.scans || []).map((item) => ({
+          id: item.id,
+          label: item.category,
+          confidence: item.confidence,
+          fileName: item.filename || "Unknown file",
+          timestamp: item.created_at,
+          status: item.status,
+          recommendedBin: item.recommended_bin,
+          message: item.message,
+        }));
 
-      if (savedHistory) {
-        setHistory(JSON.parse(savedHistory));
+        setHistory(backendHistory);
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(backendHistory));
+      } catch (error) {
+        console.warn("Backend history unavailable, using local history:", error);
+
+        try {
+          const savedHistory = localStorage.getItem(HISTORY_KEY);
+          if (savedHistory) {
+            setHistory(JSON.parse(savedHistory));
+          }
+        } catch (storageError) {
+          console.error("Unable to load scan history:", storageError);
+        }
       }
-    } catch (error) {
-      console.error("Unable to load scan history:", error);
-    }
+    };
+
+    loadHistory();
   }, []);
 
   const saveHistory = (newHistory) => {
@@ -130,14 +152,20 @@ function App() {
       }
 
       const historyItem = {
-        id: Date.now(),
+        id: result?.scan_id ?? Date.now(),
         label,
         confidence,
-        fileName: selectedImage.name,
-        timestamp: new Date().toISOString(),
+        fileName: result?.filename || selectedImage.name,
+        timestamp: result?.created_at || new Date().toISOString(),
+        status: result?.status,
+        recommendedBin: result?.recommended_bin,
+        message: result?.message,
       };
 
-      const updatedHistory = [historyItem, ...history].slice(0, 50);
+      const updatedHistory = [
+        historyItem,
+        ...history.filter((item) => item.id !== historyItem.id),
+      ].slice(0, 50);
 
       saveHistory(updatedHistory);
     } catch (error) {
@@ -189,10 +217,26 @@ function App() {
     return Math.min(100, Math.max(0, percentage));
   };
 
-  const clearHistory = () => {
-    if (window.confirm("Clear all saved scan history?")) {
+  const clearHistory = async () => {
+    if (!window.confirm("Clear all saved scan history?")) return;
+
+    try {
+      await API.delete("/history");
       localStorage.removeItem(HISTORY_KEY);
       setHistory([]);
+    } catch (error) {
+      console.error("Unable to clear backend history:", error);
+
+      if (error.response) {
+        setErrorMessage(
+          error.response.data?.detail ||
+            "Unable to clear scan history from the backend."
+        );
+      } else {
+        setErrorMessage(
+          "Unable to connect to the AI backend. Make sure the backend is running."
+        );
+      }
     }
   };
 
@@ -805,7 +849,7 @@ function HistoryPage({ history, clearHistory, setActivePage }) {
           </h2>
 
           <p className="mt-3 max-w-xl text-slate-500">
-            Review previous waste classifications stored on this device.
+            Review previous waste classifications saved by the ECO-SORT AI backend.
           </p>
         </div>
 
@@ -964,7 +1008,7 @@ function DashboardPage({ history, setActivePage }) {
         </h2>
 
         <p className="mt-3 max-w-xl text-slate-500">
-          A quick overview of your ECO-SORT AI activity.
+          A quick overview of your ECO-SORT AI activity stored in the backend.
         </p>
       </div>
 
@@ -1011,7 +1055,7 @@ function DashboardPage({ history, setActivePage }) {
               <h3 className="font-black">Classification overview</h3>
 
               <p className="text-sm text-slate-500">
-                Based on your saved scans
+                Based on your backend scan history
               </p>
             </div>
           </div>
@@ -1047,7 +1091,7 @@ function DashboardPage({ history, setActivePage }) {
               <h3 className="font-black">AI performance</h3>
 
               <p className="text-sm text-slate-500">
-                Confidence from available results
+                Confidence from backend results
               </p>
             </div>
           </div>
